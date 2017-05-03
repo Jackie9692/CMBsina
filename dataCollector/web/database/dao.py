@@ -1,8 +1,4 @@
 # -*-coding:utf-8-*-
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
 from bo.baseBo import ProjectDetail
 from bo.baseBo import APIDetail
 from bo.baseBo import EnvironmentDetail
@@ -10,15 +6,7 @@ from bo.baseBo import ModuleDetail
 from bo.baseBo import ClassDetail
 from bo.baseBo import CheckTableBo
 
-
-Base = declarative_base()
-
-engine = create_engine('mysql://root:admin@localhost:3306/api_validator?charset=utf8', encoding='utf-8', echo=True)
-Base.metadata.create_all(engine)
-
-Session = sessionmaker()
-Session.configure(bind=engine)
-session = Session()
+from . import session
 
 
 class APIDetailDao():
@@ -33,14 +21,14 @@ class APIDetailDao():
                                return_description=dic["returnDescription"], work_status=dic["workStatus"],
                                return_format=dic["retrunFormat"],
                                return_example=dic["returnExample"], test_status=dic["testStatus"],
-                               owner=dic["responser"]);
+                               owner=dic["responser"])
         session.add(api_detail)
-        try:  #--------session提交时， 要捕获异常，否则错误将一直存在知道session清除----------
+        try:  # --------session提交时， 要捕获异常，否则错误将一直存在知道session清除----------
             session.commit()
         except:
             session.rollback()
 
-    #跟新api
+    # 跟新api
     def update(self, id, dic):
         api_detail = APIDetail(id=id, project_code=dic["projectName"], module_code=dic["moduleName"],
                                class_code=dic["className"],
@@ -51,10 +39,10 @@ class APIDetailDao():
                                return_description=dic["returnDescription"], work_status=dic["workStatus"],
                                return_format=dic["retrunFormat"],
                                return_example=dic["returnExample"], test_status=dic["testStatus"],
-                               owner=dic["responser"]);
+                               owner=dic["responser"])
         session.merge(api_detail)
         session.commit()
-        #查询符合条件的api
+        # 查询符合条件的api
 
     def query(self, conditionDic):
         query = session.query(APIDetail)
@@ -120,14 +108,14 @@ class ProjectDetailDao():
     def save(self, dic):
         projectDetail = ProjectDetail(name=dic["projectName"], context=dic["projectContext"],
                                       pro_env_code=dic["projectProEnvi"], test_env_code=dic["projectTestEnvi"],
-                                      code=dic["projectCode"]);
+                                      code=dic["projectCode"])
         session.add(projectDetail)
         session.commit()
 
-    #跟新project
+    # 跟新project
     def update(self, id, dic):
         projectDetail = ProjectDetail(code=id, name=dic["projectName"], context=dic["projectContext"],
-                                      pro_env_code=dic["projectProEnvi"], test_env_code=dic["projectTestEnvi"]);
+                                      pro_env_code=dic["projectProEnvi"], test_env_code=dic["projectTestEnvi"])
         session.merge(projectDetail)
         session.commit()
 
@@ -146,7 +134,7 @@ class EnvironmentDetailDao():
 
     def save(self, dic):
         environmentDetail = EnvironmentDetail(name=dic["name"], code=dic["code"],
-                                              address=dic["address"]);
+                                              address=dic["address"])
         session.add(environmentDetail)
         try:
             session.commit()
@@ -155,7 +143,7 @@ class EnvironmentDetailDao():
 
     def update(self, id, dic):
         environmentDetail = EnvironmentDetail(name=dic["name"], code=dic["code"],
-                                              address=dic["address"]);
+                                              address=dic["address"])
         session.merge(environmentDetail)
         session.commit()
 
@@ -174,13 +162,13 @@ class ModuleDetailDao():
 
     def save(self, dic):
         moduleDetail = ModuleDetail(name=dic["name"], code=dic["code"],
-                                    project_code=dic["projectCode"]);
+                                    project_code=dic["projectCode"])
         session.add(moduleDetail)
         session.commit()
 
     def update(self, dic):
         moduleDetail = ModuleDetail(name=dic["name"], code=dic["code"],
-                                    project_code=dic["projectCode"]);
+                                    project_code=dic["projectCode"])
         session.merge(moduleDetail)
         session.commit()
 
@@ -232,13 +220,13 @@ class CheckTableDao():
 
     def save(self, dic):
         checkTableBo = CheckTableBo(name=dic["name"], code=dic["code"],  # to modify
-                                    address=dic["address"]);
+                                    address=dic["address"])
         session.add(checkTableBo)
         session.commit()
 
     def update(self, id, dic):
         checkTableBo = CheckTableBo(name=dic["name"], code=dic["code"],
-                                    address=dic["address"]);
+                                    address=dic["address"])
         session.merge(checkTableBo)
         session.commit()
 

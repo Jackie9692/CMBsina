@@ -3,7 +3,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.dialects.mysql.base import TEXT
 
-Base = declarative_base()
+# from database
+# Base = declarative_base()
+
+from database import Base
 
 # `name` varchar(255) DEFAULT NULL COMMENT '������',
 # `code` varchar(255) NOT NULL COMMENT '���̴���',

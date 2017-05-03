@@ -11,6 +11,8 @@ from collections import deque
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+# from ..web.bo import ProjectDetail
+
 user_url_que = deque()
 LOGIN_MAX_TRIES = 10  # 登录最多尝试次数
 loginURL = u"http://login.sina.com.cn/signup/signin.php?entry=sso"  # 自动登录微博的登录地址，可能会不定期改变!!
@@ -425,6 +427,8 @@ def parse_user(driver):  #thread for parsing user page
 
 
 if __name__ == "__main__":
+
+    # ProjectDetail() 引入web包失败
 
     search_browser = Weibo()  #查找微博的浏览器
     # user_browser = Weibo()    #获取微博作者信息的浏览器

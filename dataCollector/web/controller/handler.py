@@ -1,24 +1,23 @@
 # coding:utf-8
 
+# import tornado.web
 from database.dao import ProjectDetailDao
 from database.dao import ModuleDetailDao
 from database.dao import EnvironmentDetailDao
 from database.dao import ClassDetailDao
 from database.dao import APIDetailDao
 from database.dao import CheckTableDao
-import tornado.web
 
-from util.utilClass import PageUtil
-
+from tornado.web import RequestHandler as RHandler
 import urllib
 import urllib2
 import json
 
 
 # API 注册界面
-class RegisterHandler(tornado.web.RequestHandler):
+class RegisterHandler(RHandler):
     def __init__(self, application, request):
-        tornado.web.RequestHandler.__init__(self, application, request)
+        RHandler.__init__(self, application, request)
         self.projectDetailDao = ProjectDetailDao()
         self.moduleDetailDao = ModuleDetailDao()
         self.environmentDetailDao = EnvironmentDetailDao()
@@ -33,7 +32,7 @@ class RegisterHandler(tornado.web.RequestHandler):
 
 
 # API 注册界面保存处理
-class RegisterSaveHandler(tornado.web.RequestHandler):
+class RegisterSaveHandler(RHandler):
     def post(self):
         self.apiDetailDao = APIDetailDao()
         projectName = self.get_argument("projectName")
@@ -66,8 +65,8 @@ class RegisterSaveHandler(tornado.web.RequestHandler):
 
 
 # API查询handler
-class APIQuery(tornado.web.RequestHandler):
-    apiDetailDao = APIDetailDao();
+class APIQuery(RHandler):
+    apiDetailDao = APIDetailDao()
     projectDetailDao = ProjectDetailDao()
     moduleDetailDao = ModuleDetailDao()
     environmentDetailDao = EnvironmentDetailDao()
@@ -77,7 +76,7 @@ class APIQuery(tornado.web.RequestHandler):
         projectCodeList = self.projectDetailDao.findList()
         moduleCodeList = self.moduleDetailDao.findList()
         classDetailCodeList = self.classDetailDao.findList()
-        apiMatchedList = self.apiDetailDao.query({});
+        apiMatchedList = self.apiDetailDao.query({})
         self.render("apiQuery.html", projectCodeList=projectCodeList, moduleCodeList=moduleCodeList,
                     classDetailCodeList=classDetailCodeList, apiMatchedList=apiMatchedList)
 
@@ -100,7 +99,7 @@ class APIQuery(tornado.web.RequestHandler):
         apiDetailDic = {"projectName": projectName, "moduleName": moduleName, "className": className,
                         "methodName": methodName, "restMethodName": restMethodName, "requestWay": requestWay,
                         "retrunFormat": retrunFormat}
-        apiMatchedList = self.apiDetailDao.query(apiDetailDic);
+        apiMatchedList = self.apiDetailDao.query(apiDetailDic)
         projectCodeList = self.projectDetailDao.findList()
         moduleCodeList = self.moduleDetailDao.findList()
         classDetailCodeList = self.classDetailDao.findList()
@@ -109,8 +108,8 @@ class APIQuery(tornado.web.RequestHandler):
 
 
 # API详情handler
-class APIDetail(tornado.web.RequestHandler):
-    apiDetailDao = APIDetailDao();
+class APIDetail(RHandler):
+    apiDetailDao = APIDetailDao()
 
     def get(self):
         id = self.get_argument("id")
@@ -122,8 +121,8 @@ class APIDetail(tornado.web.RequestHandler):
 
 
 # API编辑内容
-class APIEdit(tornado.web.RequestHandler):
-    apiDetailDao = APIDetailDao();
+class APIEdit(RHandler):
+    apiDetailDao = APIDetailDao()
 
     def get(self):
         id = self.get_argument("id")
@@ -160,7 +159,7 @@ class APIEdit(tornado.web.RequestHandler):
 
 
 # API删除
-class APIRemove(tornado.web.RequestHandler):
+class APIRemove(RHandler):
     apiDetailDao = APIDetailDao()
 
     def get(self):
@@ -174,7 +173,7 @@ class APIRemove(tornado.web.RequestHandler):
 
 # ################## 类表处理
 
-class ClassQueryHandler(tornado.web.RequestHandler):
+class ClassQueryHandler(RHandler):
     classDetailDao = ClassDetailDao()
 
     def get(self):
@@ -185,7 +184,7 @@ class ClassQueryHandler(tornado.web.RequestHandler):
         self.write("")
 
 
-class ClassDeleteHandler(tornado.web.RequestHandler):
+class ClassDeleteHandler(RHandler):
     classDetailDao = ClassDetailDao()
 
     def get(self):
@@ -197,7 +196,7 @@ class ClassDeleteHandler(tornado.web.RequestHandler):
         self.write("!")
 
 
-class ClassCreateHandler(tornado.web.RequestHandler):
+class ClassCreateHandler(RHandler):
     classDetailDao = ClassDetailDao()
 
     def get(self):
@@ -213,7 +212,7 @@ class ClassCreateHandler(tornado.web.RequestHandler):
             self.write("创建失败！")
 
 
-class ClassEditHandler(tornado.web.RequestHandler):
+class ClassEditHandler(RHandler):
     classDetailDao = ClassDetailDao()
 
     def get(self):
@@ -225,7 +224,7 @@ class ClassEditHandler(tornado.web.RequestHandler):
         self.write("")
 
 
-class ClassEditSaveHandler(tornado.web.RequestHandler):
+class ClassEditSaveHandler(RHandler):
     classDetailDao = ClassDetailDao()
 
     def get(self):
@@ -237,8 +236,8 @@ class ClassEditSaveHandler(tornado.web.RequestHandler):
         self.write("!")
 
 
-# Project         
-class ProjectQueryHandler(tornado.web.RequestHandler):
+# Project
+class ProjectQueryHandler(RHandler):
     projectDetailDao = ProjectDetailDao()
 
     def get(self):
@@ -249,7 +248,7 @@ class ProjectQueryHandler(tornado.web.RequestHandler):
         self.write("")
 
 
-class ProjectDeleteHandler(tornado.web.RequestHandler):
+class ProjectDeleteHandler(RHandler):
     projectDetailDao = ProjectDetailDao()
 
     def get(self):
@@ -261,12 +260,12 @@ class ProjectDeleteHandler(tornado.web.RequestHandler):
         self.write("!")
 
 
-class ProjectCreateHandler(tornado.web.RequestHandler):
+class ProjectCreateHandler(RHandler):
     projectDetailDao = ProjectDetailDao()
     environmentDetailDao = EnvironmentDetailDao()
 
     def get(self):
-        environmentList = self.environmentDetailDao.findList();
+        environmentList = self.environmentDetailDao.findList()
         self.render("projectCreate.html", environmentList=environmentList)
 
     def post(self):
@@ -281,21 +280,21 @@ class ProjectCreateHandler(tornado.web.RequestHandler):
         self.redirect("/project/query")
 
 
-class ProjectEditHandler(tornado.web.RequestHandler):
+class ProjectEditHandler(RHandler):
     projectDetailDao = ProjectDetailDao()
     environmentDetailDao = EnvironmentDetailDao()
 
     def get(self):
         id = self.get_argument("id")
         projectDetail = self.projectDetailDao.getById(code=id)
-        environmentList = self.environmentDetailDao.findList();
+        environmentList = self.environmentDetailDao.findList()
         self.render("projectEdit.html", projectDetail=projectDetail, environmentList=environmentList)
 
     def post(self):
         self.write("")
 
 
-class ProjectEditSaveHandler(tornado.web.RequestHandler):
+class ProjectEditSaveHandler(RHandler):
     projectDetailDao = ProjectDetailDao()
 
     def get(self):
@@ -314,7 +313,7 @@ class ProjectEditSaveHandler(tornado.web.RequestHandler):
         self.redirect("/project/query")
 
 
-class ProjectDetailHandler(tornado.web.RequestHandler):
+class ProjectDetailHandler(RHandler):
     projectDetailDao = ProjectDetailDao()
 
     def get(self):
@@ -329,7 +328,7 @@ class ProjectDetailHandler(tornado.web.RequestHandler):
     # environment
 
 
-class EnvirQueryHandler(tornado.web.RequestHandler):
+class EnvirQueryHandler(RHandler):
     environmentDetailDao = EnvironmentDetailDao()
 
     def get(self):
@@ -340,7 +339,7 @@ class EnvirQueryHandler(tornado.web.RequestHandler):
         self.write("")
 
 
-class EnvirDeleteHandler(tornado.web.RequestHandler):
+class EnvirDeleteHandler(RHandler):
     environmentDetailDao = EnvironmentDetailDao()
 
     def get(self):
@@ -352,11 +351,11 @@ class EnvirDeleteHandler(tornado.web.RequestHandler):
         self.write("!")
 
 
-class EnvirCreateHandler(tornado.web.RequestHandler):
+class EnvirCreateHandler(RHandler):
     environmentDetailDao = EnvironmentDetailDao()
 
     def get(self):
-        environmentList = self.environmentDetailDao.findList();
+        environmentList = self.environmentDetailDao.findList()
         self.render("projectCreate.html", environmentList=environmentList)
 
     def post(self):
@@ -367,7 +366,7 @@ class EnvirCreateHandler(tornado.web.RequestHandler):
         self.redirect("/environment/query")
 
 
-class EnvirEditHandler(tornado.web.RequestHandler):
+class EnvirEditHandler(RHandler):
     environmentDetailDao = EnvironmentDetailDao()
 
     def get(self):
@@ -379,7 +378,7 @@ class EnvirEditHandler(tornado.web.RequestHandler):
         self.write("")
 
 
-class EnvirEditSaveHandler(tornado.web.RequestHandler):
+class EnvirEditSaveHandler(RHandler):
     environmentDetailDao = EnvironmentDetailDao()
 
     def get(self):
@@ -396,7 +395,7 @@ class EnvirEditSaveHandler(tornado.web.RequestHandler):
     # module
 
 
-class ModuleQueryHandler(tornado.web.RequestHandler):
+class ModuleQueryHandler(RHandler):
     moduleDetailDao = ModuleDetailDao()
 
     def get(self):
@@ -407,7 +406,7 @@ class ModuleQueryHandler(tornado.web.RequestHandler):
         self.write("")
 
 
-class ModuleDeleteHandler(tornado.web.RequestHandler):
+class ModuleDeleteHandler(RHandler):
     moduleDetailDao = ModuleDetailDao()
 
     def get(self):
@@ -419,12 +418,12 @@ class ModuleDeleteHandler(tornado.web.RequestHandler):
         self.write("!")
 
 
-class ModuleCreateHandler(tornado.web.RequestHandler):
+class ModuleCreateHandler(RHandler):
     moduleDetailDao = ModuleDetailDao()
     projectDetailDao = ProjectDetailDao()
 
     def get(self):
-        projectList = self.projectDetailDao.findList();
+        projectList = self.projectDetailDao.findList()
         self.render("moduleCreate.html", projectList=projectList)
 
     def post(self):
@@ -435,21 +434,21 @@ class ModuleCreateHandler(tornado.web.RequestHandler):
         self.redirect("/module/query")
 
 
-class ModuleEditHandler(tornado.web.RequestHandler):
+class ModuleEditHandler(RHandler):
     moduleDetailDao = ModuleDetailDao()
     projectDetailDao = ProjectDetailDao()
 
     def get(self):
         id = self.get_argument("id")
         moduleDetail = self.moduleDetailDao.getById(code=id)
-        projectList = self.projectDetailDao.findList();
+        projectList = self.projectDetailDao.findList()
         self.render("moduleEdit.html", moduleDetail=moduleDetail, projectList=projectList)
 
     def post(self):
         self.write("")
 
 
-class ModuleEditSaveHandler(tornado.web.RequestHandler):
+class ModuleEditSaveHandler(RHandler):
     moduleDetailDao = ModuleDetailDao()
 
     def get(self):
@@ -463,10 +462,10 @@ class ModuleEditSaveHandler(tornado.web.RequestHandler):
         self.redirect("/module/query")
 
 
-class CheckTableHandler(tornado.web.RequestHandler):
+class CheckTableHandler(RHandler):
     checkTableDao = CheckTableDao()
     environmentDetailDao = EnvironmentDetailDao()
-    apiDetailDao = APIDetailDao();
+    apiDetailDao = APIDetailDao()
 
     def get(self):
         checkTableList = self.checkTableDao.findList()
@@ -489,7 +488,7 @@ class CheckTableHandler(tornado.web.RequestHandler):
         apiDetail = self.apiDetailDao.getById(apiId)
         environmentDetail = self.environmentDetailDao.getById(enviromentId)
 
-        statusJudge = True;  # 判断是否匹配标志
+        statusJudge = True  # 判断是否匹配标志
         preUrl = 'http://' + environmentDetail.address + ':8080' + apiDetail.rest_method_name  # 访问地址前缀
 
         res = self.getResResult(each=each, preUrl=preUrl)

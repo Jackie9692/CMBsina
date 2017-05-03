@@ -1,5 +1,6 @@
 .idea/
 *.iml
+*.pyc
 out/
 gen/
 idea-gitignore.jar
