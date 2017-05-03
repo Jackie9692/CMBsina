@@ -8,6 +8,11 @@ import random
 from selenium.webdriver.common.by import By
 import threading
 from collections import deque
+
+
+#added by jackie import报错
+# from database.dao import StatusDao
+
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -425,6 +430,10 @@ def parse_user(driver):  #thread for parsing user page
 
 
 if __name__ == "__main__":
+
+    #added by jackie
+    # statusDao = StatusDao()
+    # statusDao.save({})
 
     search_browser = Weibo()  #查找微博的浏览器
     # user_browser = Weibo()    #获取微博作者信息的浏览器
