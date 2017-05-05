@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+
+import sys
+
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 import time
 from selenium import webdriver
 import selenium.webdriver.support.ui as ui
@@ -9,9 +15,10 @@ from selenium.webdriver.common.by import By
 import threading
 from collections import deque
 
+from os import sys, path
 
-#added by jackie import报错
-# from database.dao import StatusDao
+sys.path.append(path.abspath(path.join(path.dirname(__file__), '..')))  # 引入绝对路径
+from dao.baseDao import StatusDao
 
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -39,6 +46,9 @@ class Status:
     pic_urls = []  # 图片URL
     keywords = []  # 匹配关键字
     timestamp = None  # 爬取的时间戳
+    #added by jackie 判断是否为有用信息
+    isValidated = None #是否为有用信息
+
 
     def tojson(self):
         status = {'status_id': self.status_id, 'user_simple': self.user_simple, 'text': self.text, 'date': self.date,
@@ -77,17 +87,17 @@ class Weibo(object):
         loginSucess = False
         tried_times = 0
         while tried_times <= LOGIN_MAX_TRIES and not loginSucess:
-            #尝试自动登录，直到登录成功或者超过最大登录次数
+            # 尝试自动登录，直到登录成功或者超过最大登录次数
             tried_times += 1
             try:
                 driver.get(loginUrl)
-                elem_user = driver.find_element(by=By.ID, value="username")  #登录 用户名输入框
-                elem_user.send_keys(username)  #fill in username
-                elem_pwd = driver.find_element(by=By.ID, value="password")  #登录密码框
-                elem_pwd.send_keys(password)  #fill in password
+                elem_user = driver.find_element(by=By.ID, value="username")  # 登录 用户名输入框
+                elem_user.send_keys(username)  # fill in username
+                elem_pwd = driver.find_element(by=By.ID, value="password")  # 登录密码框
+                elem_pwd.send_keys(password)  # fill in password
                 elem_sub = driver.find_element_by_xpath('//input[@type="submit"]')
                 time.sleep(1)
-                elem_sub.click()  #click login button
+                elem_sub.click()  # click login button
                 time.sleep(5)
                 loginSucess = True
                 break
@@ -97,11 +107,11 @@ class Weibo(object):
                     continue
                 else:
                     return False
-        if tried_times > 10:  #尝试登录次数超过最大次数
+        if tried_times > 10:  # 尝试登录次数超过最大次数
             return False
         else:
             # return loginSucess
-            return self.comeToSearchWeiboPage(driver)  #登录成功
+            return self.comeToSearchWeiboPage(driver)  # 登录成功
 
     def comeToSearchWeiboPage(self, driver):
         """
@@ -165,8 +175,8 @@ class Weibo(object):
                     #
                     #
                     #
-                    #     #user simple and user url
-                    #     if node.find_element_by_xpath('.//a[@class="W_texta W_fb"]') != []:
+                    # #user simple and user url
+                    # if node.find_element_by_xpath('.//a[@class="W_texta W_fb"]') != []:
                     #         self.status.user_simple["name"] = (
                     #         node.find_element_by_xpath('.//a[@class="W_texta W_fb"]')).text.replace(" ", "")  #username
                     #         self.status.userurl = node.find_element_by_xpath('.//a[@class="W_texta W_fb"]').get_attribute(
@@ -277,8 +287,8 @@ class Weibo(object):
         # user_driver.get(userurl)
         # # write_file = open("user.json", "a")
         # while True:
-        #     try:
-        #         user = Users()
+        # try:
+        # user = Users()
         #         if user_driver.current_url == "http://weibo.com/u/3344505284/home?wvr=5":
         #             break
         #         print "user info:"
@@ -341,7 +351,7 @@ class Weibo(object):
                 # WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "gn_search_v2")))
                 search_area = driver.find_element_by_class_name('gn_search_v2')
                 search_input = search_area.find_element_by_xpath('.//input[@node-type="searchInput"]')
-                #Put all keywords in a combination into a string
+                # Put all keywords in a combination into a string
                 keyword_comb = ""
                 for keyword in keywords:
                     keyword_comb = keyword_comb + " " + keyword
@@ -353,7 +363,7 @@ class Weibo(object):
                 time.sleep(3)
                 self.parse_search_page(driver)
                 # list_count = len(driver.find_element_by_xpath('//div[@class="layer_menu_list W_scroll"]')\
-                #                      .find_elements_by_xpath(".//li"))
+                # .find_elements_by_xpath(".//li"))
                 # more_result_btn = search_driver.find_element_by_xpath('//div[@class="search_rese clearfix"]') \
                 #         .find_element_by_xpath(".//a")
                 # if list_count <= 30 and more_result_btn:
@@ -407,7 +417,7 @@ class Weibo(object):
 
 # Initiate two Weibo instance for search page and user page
 
-def parse_status(search_weibo, driver):  #thread for parsing search page
+def parse_status(search_weibo, driver):  # thread for parsing search page
     while True:
         print("Start search Weibo!")
         # for keyword in keywords_list:
@@ -416,7 +426,7 @@ def parse_status(search_weibo, driver):  #thread for parsing search page
         time.sleep(random.uniform(3600, 4200))
 
 
-def parse_user(driver):  #thread for parsing user page
+def parse_user(driver):  # thread for parsing user page
     print "start user thread"
     while True:
         time.sleep(random.uniform(10, 30))
@@ -430,48 +440,47 @@ def parse_user(driver):  #thread for parsing user page
 
 
 if __name__ == "__main__":
+    # added by jackie
+    statusDao = StatusDao()
+    statusDao.save({})
 
-    #added by jackie
-    # statusDao = StatusDao()
-    # statusDao.save({})
-
-    search_browser = Weibo()  #查找微博的浏览器
-    # user_browser = Weibo()    #获取微博作者信息的浏览器
-
-    search_driver = webdriver.Firefox()  #Browser for search status
-    wait = ui.WebDriverWait(search_driver, 10)
-
-    # user_driver = webdriver.Firefox()  #Browser for parsing user page
-    # wait = ui.WebDriverWait(user_driver, 10)
-
-
-    #两个浏览器分别登录微博账号，主要为了获取cookies
-
-    random.shuffle(keywords_list)  #disorder the list of keywords
-
-    threads = []
-    #完成自动登录
-    if search_browser.loginSinaWeibo(account_name, account_passwd, search_driver, loginURL):
-        # print ("登录成功并转到微博页面")
-        search_status_thread = threading.Thread(target=parse_status, args=(search_browser, search_driver))
-        threads.append(search_status_thread)
-
-    # user_browser.loginSinaWeibo(account_name, account_passwd,user_driver,loginURL)
-
-
-
-    #place parsing search page and parsing user page into two threads
-
-
-
-
-
-    # user_info_thread = threading.Thread(target=parse_user, args=(user_driver,))
-    # threads.append(user_info_thread)
-
-    for thread in threads:
-        thread.start()
+    # search_browser = Weibo()  #查找微博的浏览器
+    # # user_browser = Weibo()    #获取微博作者信息的浏览器
     #
-    # #主线程等待子线程结束后退出，虽然子线程死了才要退
-    for thread in threads:
-        thread.join()
+    # search_driver = webdriver.Firefox()  #Browser for search status
+    # wait = ui.WebDriverWait(search_driver, 10)
+    #
+    # # user_driver = webdriver.Firefox()  #Browser for parsing user page
+    # # wait = ui.WebDriverWait(user_driver, 10)
+    #
+    #
+    # #两个浏览器分别登录微博账号，主要为了获取cookies
+    #
+    # random.shuffle(keywords_list)  #disorder the list of keywords
+    #
+    # threads = []
+    # #完成自动登录
+    # if search_browser.loginSinaWeibo(account_name, account_passwd, search_driver, loginURL):
+    # # print ("登录成功并转到微博页面")
+    #     search_status_thread = threading.Thread(target=parse_status, args=(search_browser, search_driver))
+    #     threads.append(search_status_thread)
+    #
+    # # user_browser.loginSinaWeibo(account_name, account_passwd,user_driver,loginURL)
+    #
+    #
+    #
+    # #place parsing search page and parsing user page into two threads
+    #
+    #
+    #
+    #
+    #
+    # # user_info_thread = threading.Thread(target=parse_user, args=(user_driver,))
+    # # threads.append(user_info_thread)
+    #
+    # for thread in threads:
+    #     thread.start()
+    # #
+    # # #主线程等待子线程结束后退出，虽然子线程死了才要退
+    # for thread in threads:
+    #     thread.join()
