@@ -1,10 +1,5 @@
 # -*- coding: utf-8 -*-
-
-import sys
-
-reload(sys)
-sys.setdefaultencoding('utf-8')
-
+import os
 import time
 from selenium import webdriver
 import selenium.webdriver.support.ui as ui
@@ -14,16 +9,10 @@ import random
 from selenium.webdriver.common.by import By
 import threading
 from collections import deque
-
-from os import sys, path
-
-sys.path.append(path.abspath(path.join(path.dirname(__file__), '..')))  # 引入绝对路径
-from dao.baseDao import StatusDao
-
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-user_url_que = deque()
+
 LOGIN_MAX_TRIES = 10  # 登录最多尝试次数
 loginURL = u"http://login.sina.com.cn/signup/signin.php?entry=sso"  # 自动登录微博的登录地址，可能会不定期改变!!
 keywords_list = ['招商银行', '招行']
@@ -46,9 +35,6 @@ class Status:
     pic_urls = []  # 图片URL
     keywords = []  # 匹配关键字
     timestamp = None  # 爬取的时间戳
-    #added by jackie 判断是否为有用信息
-    isValidated = None #是否为有用信息
-
 
     def tojson(self):
         status = {'status_id': self.status_id, 'user_simple': self.user_simple, 'text': self.text, 'date': self.date,
@@ -87,18 +73,20 @@ class Weibo(object):
         loginSucess = False
         tried_times = 0
         while tried_times <= LOGIN_MAX_TRIES and not loginSucess:
-            # 尝试自动登录，直到登录成功或者超过最大登录次数
+            #尝试自动登录，直到登录成功或者超过最大登录次数
             tried_times += 1
             try:
+                print "try login once"
                 driver.get(loginUrl)
-                elem_user = driver.find_element(by=By.ID, value="username")  # 登录 用户名输入框
-                elem_user.send_keys(username)  # fill in username
-                elem_pwd = driver.find_element(by=By.ID, value="password")  # 登录密码框
-                elem_pwd.send_keys(password)  # fill in password
+                elem_user = driver.find_element(by=By.ID, value="username")  #登录 用户名输入框
+                elem_user.send_keys(username)  #fill in username
+                elem_pwd = driver.find_element(by=By.ID, value="password")  #登录密码框
+                elem_pwd.send_keys(password)  #fill in password
                 elem_sub = driver.find_element_by_xpath('//input[@type="submit"]')
-                time.sleep(1)
-                elem_sub.click()  # click login button
-                time.sleep(5)
+                time.sleep(0.5)
+                elem_sub.click()  #click login button
+                time.sleep(0.5)
+                # time.sleep(5)
                 loginSucess = True
                 break
             except Exception as e:
@@ -107,11 +95,11 @@ class Weibo(object):
                     continue
                 else:
                     return False
-        if tried_times > 10:  # 尝试登录次数超过最大次数
+        if tried_times > 10:  #尝试登录次数超过最大次数
             return False
         else:
             # return loginSucess
-            return self.comeToSearchWeiboPage(driver)  # 登录成功
+            return loginSucess #登录成功
 
     def comeToSearchWeiboPage(self, driver):
         """
@@ -122,173 +110,165 @@ class Weibo(object):
         try_times = 0
         while not switch_page_success and try_times <= LOGIN_MAX_TRIES / 2:
             try:
+                print "try swtich to weibo homepage"
                 try_times += 1
                 time.sleep(3)
                 weibo_link = driver.find_element_by_link_text(u"我的微博")
-                print weibo_link.get_attribute("href")
-
                 weiboHomePage = weibo_link.get_attribute("href")  # http://weibo.com/
-                # print weiboHomePage
+                print driver.title
                 driver.get(weiboHomePage)
                 switch_page_success = True
             except Exception as e:
                 print("Error!:" + e.message)
-                if try_times <= LOGIN_MAX_TRIES / 2:
-                    continue
-                else:
-                    return False
-        if try_times > LOGIN_MAX_TRIES / 2:
-            return False
+        return switch_page_success
+
+    def parse_search_page(self,keywords, driver,urlQueue):
+        trytimes=0
+        parseSuccess=False
+        while not parseSuccess and trytimes<3:
+            trytimes+=1
+            try:
+                # results = driver.find_elements_by_class_name("WB_cardwrap S_bg2 clearfix")
+                # time.sleep(random.range(5, 10))
+                time.sleep(random.randrange(5, 10))
+                print "parse one page"
+                # print driver.page_source
+                # WebDriverWait(driver, 20).until(EC.presence_of_all_elements_located((By.XPATH, '//div[@class="WB_cardwrap S_bg2 clearfix"]')))
+                results = driver.find_elements_by_xpath('//div[@class="WB_cardwrap S_bg2 clearfix"]')
+                # results=driver.find_elements_by_class_name("WB_cardwrap S_bg2 clearfix")
+                # if isinstance(driver,webdriver.PhantomJS):
+                #     driver
+                # print len(results)
+                # print results
+                for node in results:
+                    try:
+                        status_content_div = node.find_element_by_xpath('.//div[@action-type="feed_list_item"]')
+                        if status_content_div != []:
+                            status_id = status_content_div.get_attribute("mid")  # id #status id
+                            user_simple = {}  # 微博作者简要信息
+                            try:
+                                user_link_info = status_content_div.find_element_by_xpath('.//a[@class="W_texta W_fb"]')
+                                if user_link_info != []:
+                                    username = user_link_info.text.strip()
+                                    userURL = user_link_info.get_attribute("href")
+                                    userurl = userURL
+                                    #将用户信息URL添加到共享队列中
+                                    if userURL not in urlQueue:
+                                        if isinstance(urlQueue, deque):
+                                            urlQueue.append(userURL)
+                            except Exception as e:
+                                # print e.message
+                                username=""
+                                userurl=""
+                            try:
+                                status_comment = status_content_div.find_element_by_xpath('.//p[@class="comment_txt"]')
+                                if  status_comment!=[]:
+                                    status_text = status_comment.text.strip()
+                                    # print status_text
+                                #date and statusurl
+                            except Exception as e:
+                                status_text=""
+                                # print e.message
+                            try:
+                                status_date_div = status_content_div.find_element_by_xpath('.//a[@node-type="feed_list_item_date"]')
+                                if status_date_div !=[]:
+                                    status_date = status_date_div.get_attribute("title")  # date
+                                    statusurl = status_date_div.get_attribute("href")  # statusurl
+                            except Exception as e:
+                                # print e.message
+                                status_date=""
+                                status_url=""
+                                # print status_date, statusurl
+                            #source
+                            try:
+                                status_source_div = status_content_div.find_element_by_xpath('.//a[@rel="nofollow"]')
+                                if status_source_div!=[]:
+                                    status_source = status_source_div.get_attribute("text")  #source
+                                # print status_source
+                            except Exception as e:
+                                    status_source=""
+                                    # print e.message
+                            # print status_source
+                            # repost count
+                            try:
+                                repost_count = status_content_div.find_element_by_xpath('.//a[@action-type="feed_list_forward"]').find_element_by_tag_name('em').text
+                                if repost_count != "":
+                                    repost_count = repost_count
+                                else:
+                                    repost_count = 0
+                            except:
+                                repost_count = 0
+                            # print repost_count
+                            # comments count
+                            try:
+                                comments_count = status_content_div.find_element_by_xpath('.//a[@action-type="feed_list_comment"]').find_element_by_tag_name('em').text
+                                if comments_count != "":
+                                    comments_count = comments_count
+                                else:
+                                    comments_count = 0
+                            except Exception, e:
+                                # print "Error: ", e
+                                comments_count = 0
+                            # comments_count# print comments_count
+                            # # geo
+                            # try:
+                            #     if status_content_div.find_element_by_xpath('.//span[@class="W_btn_tag"]') != []:
+                            #         address= node.find_element_by_xpath('.//span[@class="W_btn_tag"]').get_attribute("title")  #geo
+                            # except Exception, e:
+                            #     print "Error: ", e
+                            #     address=""
+                            #keywords
+                            try:
+                                keywords = driver.find_element_by_class_name("searchInp_form").get_attribute("value").split("")  #keywords
+                                keywordscom=""
+                                for keyword in keywords[0:len(keywords)]:
+                                    keywordscom+= keyword+"、"
+                                keywordscom+= keywords[len(keywords)-1]
+                                # print keywordscom
+                            except Exception as e:
+                                # print e.message
+                                keywordscom="招商银行、招行"
+                            # print keywords
+                            # timestamp
+                            timestamp = time.time()
+                            print timestamp, comments_count, repost_count, statusurl, status_source, status_date,status_text,userurl,username
+                    except Exception as e:
+                        # print "Error", e.message
+                             continue
+                parseSuccess=True
+            except Exception as e:
+                continue
+        if parseSuccess:
+            time.sleep(random.uniform(10, 20))
+            try:
+                # next_page_btn = driver.find_element_by_xpath('//*[@id="pl_weibo_direct"]/div/em/em/div[1]/div/a')
+                # next_page_btn.click()  # switch to next page
+                next_page_link=driver.find_element_by_class_name("page next S_txt1 S_line1")
+                nextpage=next_page_link.get_attribute("href")
+                driver.get(nextpage)
+                time.sleep(10)
+                # try:
+                #     search_driver.find_element_by_class_name("noresult_support")
+                #     search_driver.refresh()
+                #     search_driver.send_keys(Keys.ENTER)
+                # except Exception, e:
+                #     pass
+                #
+                # print "parse next page"
+                self.parse_search_page(keywords, driver, urlQueue)
+            except Exception, e:
+                print "Error: ", e
         else:
-            return switch_page_success
-
-    def parse_search_page(self, driver):
-
-
-        print "parse one page"
-        try:
-            # results = driver.find_elements_by_class_name("WB_cardwrap S_bg2 clearfix")
-            time.sleep(10)
-            # results = WebDriverWait(driver, 20).until(EC.presence_of_all_elements_located_located((By.XPATH, '//div[@class="WB_cardwrap S_bg2 clearfix"]')))
-            results = driver.find_elements_by_xpath('//div[@class="WB_cardwrap S_bg2 clearfix"]')
-            print len(results)
-            print results
-            for node in results:
-                try:
-                    status_content_div = node.find_element_by_xpath('.//div[@action-type="feed_list_item"]')
-
-                    if status_content_div != []:
-                        status_id = status_content_div.get_attribute("mid")  # id #status id
-                        print status_id
-                        user_simple = {}  # 微博作者简要信息
-                        user_link_info = status_content_div.find_element_by_xpath('.//a[@class="W_texta W_fb"]')
-                        if user_link_info != []:
-                            print user_link_info.text
-                            user_simple["name"] = user_link_info.text.strip()
-                            print user_link_info.get_attribute("href")
-                except Exception as e:
-                    print "Error", e.message
-                    # except Exception as e:
-                    # print "Error:","has no status content",e.message
-                    #
-                    #
-                    #
-                    #
-                    #
-                    # #user simple and user url
-                    # if node.find_element_by_xpath('.//a[@class="W_texta W_fb"]') != []:
-                    #         self.status.user_simple["name"] = (
-                    #         node.find_element_by_xpath('.//a[@class="W_texta W_fb"]')).text.replace(" ", "")  #username
-                    #         self.status.userurl = node.find_element_by_xpath('.//a[@class="W_texta W_fb"]').get_attribute(
-                    #             "href")  #userurl
-                    #         # self.parse_user_page(self.status.userurl)
-                    #         global user_url_que
-                    #         if self.status.userurl not in user_url_que:
-                    #             user_url_que.append(self.status.userurl)
-                    #         print self.status.user_simple["name"]
-                    #         print self.status.userurl
-                    #
-                    #     #comment text
-                    #     if node.find_element_by_xpath('.//p[@class="comment_txt"]') != []:
-                    #         self.status.text = node.find_element_by_xpath('.//p[@class="comment_txt"]').text  #text
-                    #         print self.status.text
-                    #
-                    #     #date and status url
-                    #     if node.find_element_by_xpath('.//a[@node-type="feed_list_item_date"]') != []:
-                    #         self.status.date = node.find_element_by_xpath(
-                    #             './/a[@node-type="feed_list_item_date"]').get_attribute("title")  #date
-                    #         self.status.statusurl = node.find_element_by_xpath(
-                    #             './/a[@node-type="feed_list_item_date"]').get_attribute("href")  #statusurl
-                    #         print self.status.date
-                    #         print self.status.statusurl
-                    #
-                    #     #source
-                    #     if node.find_element_by_xpath('.//a[@rel="nofollow"]') != []:
-                    #         self.status.source = node.find_element_by_xpath('.//a[@rel="nofollow"]').get_attribute(
-                    #             "text")  #source
-                    #         print self.status.source
-                    #
-                    #     #repost count
-                    #     try:
-                    #         repost_count = node.find_element_by_xpath(
-                    #             './/a[@action-type="feed_list_forward"]').find_element_by_xpath('.//em').text
-                    #         if repost_count != "":
-                    #             self.status.repost_count = repost_count
-                    #         else:
-                    #             self.status.repost_count = 0
-                    #     except:
-                    #         self.status.repost_count = 0
-                    #     print self.status.repost_count
-                    #
-                    #     #comments count
-                    #     try:
-                    #         # if node.find_element_by_xpath('.//a[@action-type="feed_list_comment"]').find_element_by_xpath('.//em') != []:
-                    #         comments_count = node.find_element_by_xpath(
-                    #             './/a[@action-type="feed_list_comment"]').find_element_by_xpath('.//em').text
-                    #         if comments_count != "":
-                    #             self.status.comments_count = comments_count
-                    #         else:
-                    #             self.status.comments_count = 0
-                    #     except Exception, e:
-                    #         print "Error: ", e
-                    #         self.status.comments_count = 0
-                    #     print self.status.comments_count
-                    #
-                    #     #attitude count
-                    #     try:
-                    #         attitude_count = node.find_element_by_xpath(
-                    #             './/a[@action-type="feed_list_like"]').find_element_by_xpath('.//em').text
-                    #         if attitude_count != "":
-                    #             self.status.attitude_count = attitude_count
-                    #         else:
-                    #             self.status.attitude_count = 0
-                    #     except Exception, e:
-                    #         print "Error: ", e
-                    #         self.status.attitude_count = 0
-                    #     print self.status.attitude_count
-                    #
-                    #     # if node.find_element_by_xpath('.//a[@class="W_textb"]') != []:
-                    #     #     self.status.statusurl = node.find_element_by_xpath('.//a[@class="W_textb"]').get_attribute("href")#statusurl
-                    #
-                    #     #geo
-                    #     try:
-                    #         if node.find_element_by_xpath('.//span[@class="W_btn_tag"]') != []:
-                    #             self.status.geo["address"] = node.find_element_by_xpath(
-                    #                 './/span[@class="W_btn_tag"]').get_attribute("title")  #geo
-                    #     except Exception, e:
-                    #         print "Error: ", e
-                    #         self.status.geo = {}
-                    #
-                    #     #keywords
-                    #     self.status.keywords = search_driver.find_element_by_class_name("searchInp_form").get_attribute(
-                    #         "value").split(" ")  #keywords
-                    #
-                    #     try:
-                    #         self.status.pic_urls = []
-                    #         pic_results = node.find_elements_by_xpath('.//img[@class="bigcursor"]')
-                    #         for pic in pic_results:
-                    #             self.status.pic_urls.append(pic.get_attribute("src").encode("utf-8"))
-                    #     except Exception, e:
-                    #         print "Error: ", e
-                    #
-                    #     #timestamp
-                    #     self.status.timestamp = time.time()
-        except Exception as e:
-            print "Error", e.message
-            # Parse search result page in a for loop
-            # write_file.write(json.dumps(self.status.tojson(), sort_keys=True, indent=4, separators=(',', ': '),skipkeys=True))
-        # wait 20 ~ 40 seconds to pare next page
-        time.sleep(random.uniform(20, 40))
-        # self.next_page()
-
-    def parse_user_page(self, userurl):  # Parse user page
+            self.start_search(keywords,driver,urlQueue)
+            print "解析页面失败"
+    def parse_user_page(self, userurl,driver):  # Parse user page
         time.sleep(random.uniform(2, 8))
         # user_driver.switch_to_window(user_handle)
         # user_driver.get(userurl)
         # # write_file = open("user.json", "a")
         # while True:
-        # try:
-        # user = Users()
+        #     try:
+        #         user = Users()
         #         if user_driver.current_url == "http://weibo.com/u/3344505284/home?wvr=5":
         #             break
         #         print "user info:"
@@ -336,7 +316,7 @@ class Weibo(object):
         #             user_driver.refresh()
 
 
-    def start_search(self, keywords, driver):
+    def start_search(self, keywords, driver,urlQueue):
 
         # 尝试搜索关键词列表
 
@@ -346,51 +326,36 @@ class Weibo(object):
             print("start one time search ")
             tries_times += 1
             try:
-                # driver.get()
-                time.sleep(random.randrange(4, 5))
-                # WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "gn_search_v2")))
-                search_area = driver.find_element_by_class_name('gn_search_v2')
-                search_input = search_area.find_element_by_xpath('.//input[@node-type="searchInput"]')
-                # Put all keywords in a combination into a string
-                keyword_comb = ""
-                for keyword in keywords:
-                    keyword_comb = keyword_comb + " " + keyword
-                search_input.send_keys(keyword_comb.decode('utf-8'))
-                search_input.send_keys(Keys.ENTER)
-                search_btn = search_area.find_element_by_xpath('.//a[@node-type="searchSubmit"]')
-                search_btn.click()
-
-                time.sleep(3)
-                self.parse_search_page(driver)
-                # list_count = len(driver.find_element_by_xpath('//div[@class="layer_menu_list W_scroll"]')\
-                # .find_elements_by_xpath(".//li"))
-                # more_result_btn = search_driver.find_element_by_xpath('//div[@class="search_rese clearfix"]') \
-                #         .find_element_by_xpath(".//a")
-                # if list_count <= 30 and more_result_btn:
-                #         print "click more result button"
-                #         more_result_btn.click()
-                #         time.sleep(random.uniform(1, 3))
-                # self.parse_search_page()
-                break
+                    # driver = self.comeToSearchWeiboPage(driver)
+                    driver.get("http://weibo.com/")
+                    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//*[@id="plc_top"]/div/div/div[2]/input')))
+                    search_input = driver.find_element_by_xpath('//*[@id="plc_top"]/div/div/div[2]/input')
+                    keyword_comb = ""                #Put all keywords in a combination into a string
+                    for keyword in keywords:
+                        keyword_comb = keyword_comb + " " + keyword
+                    search_input.send_keys(keyword_comb.decode('utf-8'))
+                    search_input.send_keys(Keys.ENTER)
+                    time.sleep(random.randrange(2, 3))
+                    self.parse_search_page(keywords,driver, urlQueue)
+                    search_success=True
             except Exception as e:
                 print "Error: ", e
 
-    def next_page(self):
+    def next_page(self,keywords,search_driver,urlQueue):
         try:
             time.sleep(2)
-            next_page_btn = search_driver.find_element_by_xpath('//a[@class="page next S_txt1 S_line1"]')
+            next_page_btn = search_driver.find_element_by_xpath('//*[@id="pl_weibo_direct"]/div/em/em/div[1]/div/a')
             next_page_btn.click()  # switch to next page
-
             try:
                 search_driver.find_element_by_class_name("noresult_support")
                 time.sleep(random.uniform(3, 6))
                 search_driver.refresh()
-                # search_driver.send_keys(Keys.ENTER)
+                search_driver.send_keys(Keys.ENTER)
             except Exception, e:
                 pass
 
             print "parse next page"
-            self.parse_search_page()
+            self.parse_search_page(keywords,search_driver, urlQueue)
         except Exception, e:
             print "Error: ", e
 
@@ -417,70 +382,49 @@ class Weibo(object):
 
 # Initiate two Weibo instance for search page and user page
 
-def parse_status(search_weibo, driver):  # thread for parsing search page
+def parse_status(search_weibo, driver,urlQueue):  #thread for parsing search page
     while True:
         print("Start search Weibo!")
         # for keyword in keywords_list:
         # keywords_list    print keyword
-        search_weibo.start_search(keywords_list, driver)
+        search_weibo.start_search(keywords_list, driver,urlQueue)
         time.sleep(random.uniform(3600, 4200))
 
 
-def parse_user(driver):  # thread for parsing user page
-    print "start user thread"
+def parse_user(user_browser,driver,urlQueue):  #thread for parsing user page
     while True:
-        time.sleep(random.uniform(10, 30))
         try:
-            while user_url_que:
-                user_url = user_url_que.popleft()
-                print "Try to parse" + user_url
-                user_weibo.parse_user_page(user_url)
-        except:
-            pass
-
+           while len(urlQueue) > 0:
+               time.sleep(random.randrange(10, 20))
+               user_url=urlQueue.popleft()
+               print "parseing user info ", user_url
+               user_browser.parse_user_page(user_url, driver)
+           time.sleep(random.randrange(1800, 2400))
+        except Exception as e:
+            print e.message
 
 if __name__ == "__main__":
-    # added by jackie
-    statusDao = StatusDao()
-    statusDao.save({})
+    user_url_que = deque()
+    search_browser = Weibo()  #查找微博的浏览器
+    user_browser = Weibo()    #获取微博作者信息的浏览器
+    search_driver = webdriver.PhantomJS()  #Browser for search status
+    user_driver = webdriver.PhantomJS()  #Browser for parsing user page
 
-    # search_browser = Weibo()  #查找微博的浏览器
-    # # user_browser = Weibo()    #获取微博作者信息的浏览器
+    #两个浏览器分别登录微博账号，主要为了获取cookies
+    threads = []
+
+    if search_browser.loginSinaWeibo(account_name, account_passwd, search_driver, loginURL):#完成自动登录
+        search_status_thread = threading.Thread(target=parse_status, args=(search_browser, search_driver,user_url_que))   # print ("登录成功并转到微博页面")
+        threads.append(search_status_thread)
+    user_browser.loginSinaWeibo(account_name, account_passwd,user_driver,loginURL)
+
+    #place parsing search page and parsing user page into two threads
+    user_info_thread = threading.Thread(target=parse_user, args=(user_browser, user_driver, user_url_que))
+    threads.append(user_info_thread)
+
+    for thread in threads:
+        thread.start()
     #
-    # search_driver = webdriver.Firefox()  #Browser for search status
-    # wait = ui.WebDriverWait(search_driver, 10)
-    #
-    # # user_driver = webdriver.Firefox()  #Browser for parsing user page
-    # # wait = ui.WebDriverWait(user_driver, 10)
-    #
-    #
-    # #两个浏览器分别登录微博账号，主要为了获取cookies
-    #
-    # random.shuffle(keywords_list)  #disorder the list of keywords
-    #
-    # threads = []
-    # #完成自动登录
-    # if search_browser.loginSinaWeibo(account_name, account_passwd, search_driver, loginURL):
-    # # print ("登录成功并转到微博页面")
-    #     search_status_thread = threading.Thread(target=parse_status, args=(search_browser, search_driver))
-    #     threads.append(search_status_thread)
-    #
-    # # user_browser.loginSinaWeibo(account_name, account_passwd,user_driver,loginURL)
-    #
-    #
-    #
-    # #place parsing search page and parsing user page into two threads
-    #
-    #
-    #
-    #
-    #
-    # # user_info_thread = threading.Thread(target=parse_user, args=(user_driver,))
-    # # threads.append(user_info_thread)
-    #
-    # for thread in threads:
-    #     thread.start()
-    # #
-    # # #主线程等待子线程结束后退出，虽然子线程死了才要退
-    # for thread in threads:
-    #     thread.join()
+    # #主线程等待子线程结束后退出，虽然子线程死了才要退
+    for thread in threads:
+        thread.join()
